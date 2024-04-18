@@ -6,12 +6,14 @@ import Button from "Components/button";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { Label, FormContainer } from "./_innovatorStyles";
-import { useMutation, useQuery } from "react-query";
 import { toast } from "react-toastify";
-import { updateProfile, getUserById } from "Services/userServices";
 import useAuthLS from "Hooks/useAuthLS";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { db } from "../../../firebase/clientApp"; // Import database Firestore
+import { doc, getDoc, setDoc } from "firebase/firestore"; // Import Firestore methods
+import { paths } from "Consts/path";// Menambahkan paths agar bisa berpindah halaman
+
 
 const schema = z.object({
   innovatorName: z.string().min(1, { message: "*Nama inovator wajib diisi" }),
@@ -95,38 +97,46 @@ function Profile() {
   });
   const { handleSubmit, reset } = form;
 
-  const { mutateAsync } = useMutation(updateProfile);
   const { auth } = useAuthLS();
 
-  const { data, isFetched } = useQuery(
-    "profileInnovator",
-    () => getUserById(auth?.id),
-    {
-      enabled: !!auth?.id,
-    }
-  );
-
   const onProfileSave = async (data: any) => {
-    console.log(data);
     try {
-      const payload = {
-        id: auth?.id,
-        data: data,
-      };
-      await mutateAsync(payload);
-      toast("Data profil berhasil disimpan", { type: "success" });
+      if (auth?.id) {
+        const userDocRef = doc(db, "users", auth.id); // Reference to user document in Firestore
+        await setDoc(userDocRef, data); // Set user document data in Firestore
+        toast("Data profil berhasil disimpan", { type: "success" });
+      } else {
+        // Handle case when auth.id is undefined
+        toast("Tidak dapat menyimpan data profil. Harap masuk terlebih dahulu", { type: "error" });
+        navigate(paths.LOGIN_PAGE); // Redirect to login page
+      }
     } catch (error) {
       toast("Terjadi kesalahan jaringan", { type: "error" });
     }
-  };
+  };  
+  
 
   useEffect(() => {
-    if (isFetched) {
-      reset({
-        ...(data || {}),
-      });
-    }
-  }, [isFetched]);
+    const fetchData = async () => {
+      try {
+        if (auth?.id) {
+          const userDocSnap = await getDoc(doc(db, "users", auth.id)); // Get user document from Firestore
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data(); // Extract user data from document snapshot
+            form.reset(userData); // Set form values to user data
+          }
+        } else {
+          // Handle case when auth.id is undefined
+          console.error("Cannot fetch user data. User ID is undefined.");
+        }
+      } catch (error) {
+        console.error("Error getting user document:", error);
+      }
+    };
+  
+    fetchData();
+  }, [auth?.id]); // Fetch user data when auth ID changes
+
 
   return (
     <Container page>
