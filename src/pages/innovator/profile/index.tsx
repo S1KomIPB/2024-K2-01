@@ -103,8 +103,22 @@ function Profile() {
     try {
       if (auth?.id) {
         const userDocRef = doc(db, "users", auth.id); // Reference to user document in Firestore
-        await setDoc(userDocRef, data); // Set user document data in Firestore
-        toast("Data profil berhasil disimpan", { type: "success" });
+        const userDocSnap = await getDoc(userDocRef); // Get user document from Firestore
+  
+        if (userDocSnap.exists()) {
+          const existingData = userDocSnap.data(); // Existing user data from document snapshot
+  
+          // Merge existing data with new data
+          const newData = {
+            ...existingData,
+            ...data
+          };
+  
+          await setDoc(userDocRef, newData); // Set user document data in Firestore
+          toast("Data profil berhasil disimpan", { type: "success" });
+        } else {
+          toast("User document doesn't exist", { type: "error" });
+        }
       } else {
         // Handle case when auth.id is undefined
         toast("Tidak dapat menyimpan data profil. Harap masuk terlebih dahulu", { type: "error" });
@@ -113,7 +127,8 @@ function Profile() {
     } catch (error) {
       toast("Terjadi kesalahan jaringan", { type: "error" });
     }
-  };  
+  };
+  
   
 
   useEffect(() => {
