@@ -8,7 +8,7 @@ import CardInnovation from "Components/card/innovation";
 import { useQuery } from "react-query";
 import { getCategories } from "Services/categoryServices";
 import Loading from "Components/loading";
-import { getInnovation } from "Services/innovationServices";
+import { getInnovations } from "Services/innovationServices";
 import {
   Container as CategoryContainer,
   DetailContainer,
@@ -18,13 +18,13 @@ function Detail() {
   const navigate = useNavigate();
   const { category } = useParams();
 
-  const { data } = useQuery("innovationByCategory", getInnovation);
+  const { data } = useQuery("innovationByCategory", getInnovations);
   const innovationByCategory = data?.filter(
     (item: any) => item.category === category
   );
 
   if (innovationByCategory?.length === 0) return <p>Inovasi tidak ditemukan</p>;
-
+  
   return (
     <DetailContainer>
       {innovationByCategory?.map((item: any, idx: number) => (
@@ -33,7 +33,7 @@ function Detail() {
           {...item}
           onClick={() =>
             navigate(
-              generatePath(paths.DETAIL_INNOVATION_PAGE, { id: item?.id })
+              generatePath(paths.DETAIL_INNOVATION_PAGE, { id: item?.idUnik })
             )
           }
         />
