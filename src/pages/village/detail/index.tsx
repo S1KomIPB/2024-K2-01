@@ -1,4 +1,6 @@
-import React from "react";
+// DetailVillage.tsx
+import { useQuery } from "react-query";
+import React, { useEffect, useState } from "react";
 import TopBar from "Components/topBar";
 import Container from "Components/container";
 import { useNavigate, useParams } from "react-router";
@@ -17,29 +19,47 @@ import {
   Background,
 } from "./_detailStyle";
 import { paths } from "Consts/path";
-import { getUserById } from "Services/userServices";
-import { useQuery } from "react-query";
+import { getUserById } from "Services/userServices"; // Gunakan getUserById dari userServices
+import { getNamaProvinsi, getNamaKabupaten, getNamaKecamatan } from "Services/locationServices"; // Gunakan fungsi getNamaProvinsi, getNamaKabupaten, dan getNamaKecamatan dari locationServices
+
 function DetailVillage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [locationName, setLocationName] = useState("");// State untuk menyimpan nama lokasi
 
   const { data, isLoading } = useQuery<any>("villageById", () =>
-    getUserById(id)
-  );
+  id ? getUserById(id) : null // Memastikan id tidak undefined sebelum memanggil getUserById
+);
+
   const {
     header,
     logo,
     nameVillage,
     province,
     district,
+    subDistrict,
     description,
     benefit,
     whatsApp,
   } = data || {};
+
+  useEffect(() => {
+    // Memanggil fungsi getNamaProvinsi, getNamaKabupaten, dan getNamaKecamatan untuk mendapatkan nama lokasi
+    if (province && district && subDistrict) {
+      getNamaProvinsi(province).then((namaProvinsi) => {
+        getNamaKabupaten(district).then((namaKabupaten) => {
+          getNamaKecamatan(subDistrict).then((namaKecamatan) => {
+            const location = `${namaProvinsi}, ${namaKabupaten}, ${namaKecamatan}`;
+            setLocationName(location);
+          });
+        });
+      });
+    }
+  }, [province, district, subDistrict]);
+
   const onClickHere = () => {
     window.open(`https://wa.me/+${whatsApp}`, "_blank");
   };
-  console.log(data);
 
   if (isLoading) return <p>Sedang memuat data...</p>;
 
@@ -54,7 +74,7 @@ function DetailVillage() {
         <ActionContainer>
           <Description>
             <Icon src={Location} alt="loc" />
-            {district}
+            {locationName} {/* Menampilkan nama lokasi */}
           </Description>
         </ActionContainer>
         <div>
