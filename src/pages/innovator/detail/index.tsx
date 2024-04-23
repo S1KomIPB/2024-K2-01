@@ -4,7 +4,8 @@ import Button from "Components/button";
 import { useNavigate, useParams } from "react-router-dom";
 import Container from "Components/container";
 import { useQuery } from "react-query";
-
+import { getUserById } from "Services/userServices"; // Gunakan getUserById dari userServices
+import { paths } from "Consts/path";
 import {
   ContentContainer,
   Background,
@@ -15,15 +16,16 @@ import {
   Description,
   GridContainer,
 } from "./_detailStyle";
-import { paths } from "Consts/path";
-import { getUserById } from "Services/userServices";
+
 function Detail() {
   const navigate = useNavigate();
   const { id } = useParams();
-
-  const { data, isLoading } = useQuery<any>("innovatorById", () =>
-    getUserById(id)
-  );
+  if (!id) {
+    // Handle the case where id is undefined
+    return null;
+    console.log("User not found!");
+  }
+  const { data, isLoading } = useQuery<any>(["innovatorById", id], () => getUserById(id)); // Perbarui penggunaan useQuery dengan id sebagai dependensi
   const { background, logo, innovatorName } = data || {};
   const { product, description, modelBusiness, targetUser, instagram } =
     data || {};
@@ -75,22 +77,6 @@ function Detail() {
           </GridContainer>
           <Description>{description}</Description>
         </div>
-        {/* <Text>Produk Inovasi</Text> */}
-        {/* <DetailContainer>
-          {" "}
-          {isFetched &&
-            data?.map((item, idx) => (
-              <CardInnovation
-                key={idx}
-                {...item}
-                onClick={() => navigate(paths.DETAIL_INNOVATION_PAGE)}
-              />
-            ))}
-        </DetailContainer> */}
-        {/* <Text>Desa Dampingan</Text> */}
-        {/* <ActionContainer onClick={() => navigate(paths.DETAIL_VILLAGE_PAGE)}>
-          <Text>Desa Soge</Text>
-        </ActionContainer> */}
         <Button size="m" fullWidth mt={12} type="submit" onClick={onClickHere}>
           Kontak Inovator
         </Button>
