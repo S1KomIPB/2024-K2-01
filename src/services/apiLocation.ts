@@ -27,3 +27,5 @@ const onResponseError = (error: AxiosError): Promise<AxiosError> => {
 api.interceptors.response.use(onResponseSuccess, onResponseError);
 
 export default api;
+
+
