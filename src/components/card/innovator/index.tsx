@@ -18,7 +18,7 @@ type CardInnovatorProps = {
   whatsApp?: string;
   instagram?: string;
   website?: string;
-  id?: number;
+  id?: string; //Dalam Firebase id bisa berupa kombinasi huruf dan angka
   description?: string;
 
   onClick: () => void;
@@ -36,6 +36,7 @@ function CardInnovator(props: CardInnovatorProps) {
     whatsApp,
     instagram,
     website,
+    description,
     onClick,
   } = props;
   
@@ -45,8 +46,7 @@ function CardInnovator(props: CardInnovatorProps) {
       <CardContent>
         <Logo src={logo} alt={logo} />
         <Title>{innovatorName}</Title>
-        <Description>10 Desa Dampingan</Description>
-        <Description>10 Inovasi</Description>
+        <Description>{product}</Description>
       </CardContent>
     </Container>
   );
