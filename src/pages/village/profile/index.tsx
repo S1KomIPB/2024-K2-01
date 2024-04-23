@@ -14,11 +14,12 @@ import {
   getKecamatan,
   getKelurahan,
 } from "Services/locationServices";
-import { updateProfile, getUserById } from "Services/userServices";
+import { updateProfile, getUsersFS } from "Services/userServices"
 import useAuthLS from "Hooks/useAuthLS";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../../../firebase/clientApp"
 
 const schema = z.object({
   nameVillage: z.string().min(1, { message: "*Nama desa wajib diisi" }),
@@ -41,12 +42,9 @@ function AddVillage() {
   const { mutateAsync } = useMutation(updateProfile);
   const { data, isFetched } = useQuery<any>(
     "profileVillage",
-    () => getUserById(auth?.id),
-    {
-      enabled: !!auth?.id,
-    }
+    getUsersFS,
   );
-
+  
   // id
   const [selectedProvinsi, setSelectedProvinsi] = useState("");
   const [selectedKabupaten, setSelectedKabupaten] = useState("");
@@ -78,9 +76,9 @@ function AddVillage() {
       defaultValue: data?.province,
       isDisabled: !!data?.province,
       options:
-        provinsi?.provinsi?.map((item: any) => ({
+        provinsi?.map((item: any) => ({
           id: item?.id,
-          nama: item?.nama,
+          nama: item?.name, // Sesuaikan dengan nama properti pada respon API
         })) || [],
       onChange: (id: any) => setSelectedProvinsi(id),
     },
@@ -92,9 +90,9 @@ function AddVillage() {
       defaultValue: data?.district,
       isDisabled: !!data?.district,
       options:
-        kabupaten?.kota_kabupaten?.map((item: any) => ({
+        kabupaten?.map((item: any) => ({
           id: item?.id,
-          nama: item?.nama,
+          nama: item?.name, // Sesuaikan dengan nama properti pada respon API
         })) || [],
       onChange: (id: any) => setSelectedKabupaten(id),
     },
@@ -106,9 +104,9 @@ function AddVillage() {
       defaultValue: data?.subDistrict,
       isDisabled: !!data?.subDistrict,
       options:
-        kecamatan?.kecamatan?.map((item: any) => ({
+        kecamatan?.map((item: any) => ({
           id: item?.id,
-          nama: item?.nama,
+          nama: item?.name, // Sesuaikan dengan nama properti pada respon API
         })) || [],
       onChange: (id: any) => setSelectedKecamatan(id),
     },
@@ -121,9 +119,9 @@ function AddVillage() {
       defaultValue: data?.village,
       isDisabled: data?.village,
       options:
-        kelurahan?.kelurahan?.map((item: any) => ({
+        kelurahan?.map((item: any) => ({
           id: item?.id,
-          nama: item?.nama,
+          nama: item?.name, // Sesuaikan dengan nama properti pada respon API
         })) || [],
     },
     {
@@ -165,11 +163,16 @@ function AddVillage() {
     },
   ];
 
-  const onProfileSave = async (data: any) => {
+  const onProfileSave = async (formData: any) => {
     try {
+      // Memeriksa apakah pengguna telah terotentikasi
+      if (!auth) {
+        throw new Error("Pengguna belum terotentikasi");
+      }
+
       const payload = {
-        id: auth?.id,
-        data: data,
+        id: auth.id, // Menggunakan ID pengguna dari auth
+        data: formData,
       };
       await mutateAsync(payload);
       toast("Data berhasil disimpan", { type: "success" });
@@ -179,13 +182,47 @@ function AddVillage() {
   };
 
   useEffect(() => {
-    if (isFetched) {
-      reset({
-        ...(data || {}),
-      });
-    }
-  }, [isFetched]);
+    const fetchProfileData = async () => {
+      try {
+        if (auth?.id) {
+          const userDocSnap = await getDoc(doc(db, "users", auth.id));
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+  
+            // Check if user has filled out the profile before
+            if (userData.province && userData.district && userData.subDistrict) {
+              const { province, district, subDistrict } = userData;
+  
+              // Assign values from user profile to corresponding variables
+              const idProvinsi = province;
+              const idKota = district;
+              const idKecamatan = subDistrict;
 
+              // Set selected values for province, district, and subDistrict
+              setSelectedProvinsi(idProvinsi);
+              setSelectedKabupaten(idKota);
+              setSelectedKecamatan(idKecamatan);
+  
+              // Fetch data for kabupaten, kecamatan, and kelurahan based on user's profile
+              getKabupaten(idProvinsi);
+              getKecamatan(idKota);
+              getKelurahan(idKecamatan);
+            }
+  
+            // Reset form with user data
+            reset(userData);
+          }
+        } else {
+          console.error("Auth ID is undefined. Cannot fetch profile data.");
+        }
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+      }
+    };
+  
+    fetchProfileData();
+  }, [auth?.id, reset]);  
+  
   return (
     <Container page px={16}>
       <TopBar title="Profil Desa" />
