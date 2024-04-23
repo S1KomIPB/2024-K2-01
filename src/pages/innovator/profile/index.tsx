@@ -148,7 +148,7 @@ function Profile() {
         console.error("Error getting user document:", error);
       }
     };
-  
+    
     fetchData();
   }, [auth?.id]); // Fetch user data when auth ID changes
 
