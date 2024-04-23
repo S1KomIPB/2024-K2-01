@@ -27,18 +27,25 @@ function DetailInnovation() {
   const { id } = useParams();
   const { data: innovation } = useQuery<any>(
     "innovationById",
-    () => getInnovationById(id),
+    () => {
+      if (id) {
+        return getInnovationById(id);
+      } else {
+        throw new Error("ID is undefined");
+      }
+    },
     {
       enabled: !!id,
     }
   );
+  
   const { background, benefit, category } = innovation || {};
   const { description, name, requirement, date, innovatorId } =
     innovation || {};
 
   const { data: innovator } = useQuery<any>(
     "innovatorById",
-    () => getUserById(innovatorId),
+    () => getUserById('4tWAHiJPdvXIsDcsCluEqg9fCwL2'),
     {
       enabled: !!innovatorId,
     }
@@ -46,6 +53,12 @@ function DetailInnovation() {
 
   const { innovatorName, logo } = innovator || {};
   const year = new Date(date).getFullYear();
+  
+  const { data: villageData } = useQuery<any>("villageById", () =>
+    getUserById("eVtHzPDM0WR4fuv3zjIJaKvFP8O2")
+  );
+  const villageName = villageData?.nameVillage || "Desa Soge"; // Ambil nama desa dari data yang diperoleh atau gunakan default "Desa Soge"
+  const villageLogo = villageData?.logo || "SogeLogo;" // Ambil logo desa dari data yang diperoleh atau gunakan logo default
 
   return (
     <Container page>
@@ -72,7 +85,7 @@ function DetailInnovation() {
         <ActionContainer
           onClick={() =>
             navigate(
-              generatePath(paths.DETAIL_INNOVATOR_PAGE, { id: innovatorId })
+              generatePath(paths.DETAIL_INNOVATOR_PAGE, { id: '4tWAHiJPdvXIsDcsCluEqg9fCwL2' })
             )
           }
         >
@@ -103,8 +116,8 @@ function DetailInnovation() {
         <div>
           <Text mb={16}>Desa yang Menerapkan </Text>
           <ActionContainer onClick={() => navigate(paths.DETAIL_VILLAGE_PAGE)}>
-            <Logo src={Soge} alt={Logo} />
-            <Text>Desa Soge</Text>
+            <Logo src={villageLogo} alt={villageName} /> {/* Gunakan logo desa */}
+            <Text>{villageName}</Text> {/* Gunakan nama desa */}
           </ActionContainer>
         </div>
       </ContentContainer>
