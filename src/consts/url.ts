@@ -5,4 +5,4 @@ export const BASE_URL =
     ? PRODUCTION_BASE_URL
     : DEVELOPMENT_BASE_URL;
 export const BASE_LOCATION_URL =
-  "https://dev.farizdotid.com/api/daerahindonesia/";
+  "https://imanatsaqif.github.io/api-wilayah-indonesia/api/";
