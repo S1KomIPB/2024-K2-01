@@ -10,15 +10,17 @@ export const StyledButton = styled.button<ButtonProps>`
   border-radius: 8px;
   background-color: #347357;
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 500;
   border: none;
   cursor: pointer;
 
   ${({ size }) => {
     if (size === "s") {
       return css`
-        padding: 8px 16px;
-        font-size: 14px;
+        padding: 6px 20px;
+        font-size: 10px;
+        font-weight: 500;
+        line-height: 140%;
       `;
     }
     if (size === "m") {
