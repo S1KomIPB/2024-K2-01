@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import Readiness from 'Assets/images/readiness-background.jpg'
+import Readiness from 'Assets/images/banner-alatukur.png'
 
 export const Background = styled.div`
   background-image: url(${Readiness});
@@ -9,6 +9,7 @@ export const Background = styled.div`
   padding: 12px;
   border-radius: 12px;
   min-height: 154px;
+  box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.06), 0px 1px 3px 0px rgba(0, 0, 0, 0.10);
 `
 
 export const Text = styled.p`
