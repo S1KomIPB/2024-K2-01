@@ -1,5 +1,6 @@
 import Add from 'Assets/icons/add.svg'
 import TopBar from 'Components/topBar'
+import SearchBar from 'Components/searchBar'
 import Hero from './components/hero'
 import Menu from './components/menu'
 import Readiness from './components/readiness'
@@ -19,6 +20,7 @@ function Home() {
     <Container page>
       <TopBar includeLogin title='Innovilage' onLogin={() => navigate(paths.LOGIN_PAGE)} position='space-between' />
       <Hero />
+      <SearchBar />
       <Menu />
       <Readiness />
       <Innovator />
