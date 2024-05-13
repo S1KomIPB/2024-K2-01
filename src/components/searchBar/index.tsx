@@ -6,15 +6,14 @@ import Search from 'Assets/icons/search.svg';
 const SearchBar: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(event.target.value);
-  };
-
   return (
     <div>
       <SearchContainer>
-        <img src={Search} alt="Search Icon" style={{ marginRight: '8px' }} /> 
-        <SearchInput type="text" placeholder="Cari inovasi dan inovator di sini..." onChange={handleSearchChange} />
+        <SearchInput 
+          type="text" 
+          placeholder="Cari inovasi dan inovator di sini..." 
+          style={{ backgroundImage: `url(${Search})`, backgroundPosition: '10px center', backgroundRepeat: 'no-repeat', paddingLeft: '40px' }} 
+        />
       </SearchContainer>
     </div>
   );
