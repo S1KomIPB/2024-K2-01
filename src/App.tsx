@@ -4,6 +4,7 @@ import Navbar from "./components/navbar";
 import Home from "./pages/home";
 import Innovation from "./pages/innovation";
 import Village from "./pages/village";
+//import Search from "./pages/search";
 import { paths } from "Consts/path";
 import Innovator from "./pages/innovator";
 import Login from "./pages/login";
@@ -49,6 +50,11 @@ const routes = [
   {
     path: paths.DETAIL_VILLAGE_PAGE,
     element: <DetailVillage />,
+    exact: true,
+  },
+  {
+    // path: paths.SEARCH_PAGE,
+    //element: <Search />,
     exact: true,
   },
   {

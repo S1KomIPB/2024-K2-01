@@ -7,8 +7,8 @@ export const Background = styled.div`
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
-  min-height: 180px;
-  border-radius: 0px 0px 24px 24px;
+  min-height: 120px;
+  border-radius: 0px 0px 0px 0px;
   display: flex;
   align-items: center;
 `
@@ -22,6 +22,7 @@ export const Container = styled.div`
 export const Title = styled.p`
   font-size: 12px;
   font-weight: 400;
+  line-height: 140%;
   color: #374151;
 `
 

@@ -1,3 +1,4 @@
+
 import Add from "Assets/icons/add.svg";
 import Container from "Components/container";
 import TopBar from "Components/topBar/TopBar";
@@ -17,6 +18,7 @@ import Hero from "./components/hero";
 import Innovator from "./components/innovator";
 import Menu from "./components/menu";
 import Readiness from "./components/readiness";
+
 
 function Home() {
   const navigate = useNavigate();
@@ -52,6 +54,7 @@ function Home() {
     <Container page>
       <TopBar />
       <Hero />
+      <SearchBar />
       <Menu />
       <Readiness />
       <Innovator />

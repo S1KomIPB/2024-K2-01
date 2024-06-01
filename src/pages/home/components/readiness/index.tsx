@@ -14,7 +14,7 @@ function Readiness() {
           Cek Kesiapan Dirimu <br /> terhadap Desa Digital
         </Text>
         <Button size='s' onClick={onClickHere}>
-          Disini
+          Di sini
         </Button>
       </Background>
     </Container>
