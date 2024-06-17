@@ -46,7 +46,7 @@ function CardInnovator(props: CardInnovatorProps) {
       <CardContent>
         <Logo src={logo} alt={logo} />
         <Title>{innovatorName}</Title>
-        <Description>{product}</Description>
+        <Description>{category}</Description>
       </CardContent>
     </Container>
   );

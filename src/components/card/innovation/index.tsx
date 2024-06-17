@@ -26,7 +26,6 @@ type CardInnovationProps = {
 function CardInnovation(props: CardInnovationProps) {
   const { background, logo, name, category, description, year, onClick } =
     props;
-  console.log(background);
   return (
     <Container onClick={onClick}>
       <Background src={background} alt={name} />
