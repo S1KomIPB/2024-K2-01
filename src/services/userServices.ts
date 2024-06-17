@@ -2,6 +2,14 @@ import api from "./api";
 import { db } from "../firebase/clientApp";
 import { doc, collection, query, setDoc, getDocs, getDoc, where } from "firebase/firestore";
 
+interface VillageProfileData {
+  // Define the properties of your data here
+  // For example:
+  name: string;
+  location: string;
+  // Add other properties as needed
+}
+
 export const getUsers = async () => await api.get("/users");
 
 export const getUserById = async (id: string) => {
@@ -44,7 +52,7 @@ export const getUserById = async (id: string) => {
   }
 };
 
-export const updateVillageProfile = async ({ id, data }) => {
+export const updateVillageProfile = async ({ id, data }: { id: string, data: VillageProfileData }) => {
   try {
     if (!id) {
       throw new Error("ID user tidak valid");
