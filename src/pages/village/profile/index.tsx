@@ -34,6 +34,17 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
+interface FormElement {
+  label: string;
+  type: string;
+  name: string;
+  placeholder: string;
+  options?: any; // Use '?' to indicate that options is optional
+  onChange?: (id: any) => void; // Use '?' for optional properties
+  defaultValue?: any; // Add defaultValue as an optional property
+  isDisabled?: boolean; // Add isDisabled as an optional property
+}
+
 const schema = z.object({
   nameVillage: z.string().min(1, { message: "*Nama desa wajib diisi" }),
   description: z.string().min(1, { message: "*Deskripsi desa wajib diisi" }),
@@ -106,7 +117,7 @@ function AddVillage() {
     };
   };
 
-  const forms = [
+  const forms : FormElement[] =[
     {
       label: "Provinsi",
       type: "text",
@@ -170,11 +181,13 @@ function AddVillage() {
       label: "Logo Desa",
       type: "file",
       name: "logo",
+      placeholder: "Disarankan gambar berbentuk persegi",
     },
     {
       label: "Header Desa",
       type: "file",
       name: "header",
+      placeholder: "Disarankan gambar landscape",
     },
     {
       label: "Potensi Desa",
