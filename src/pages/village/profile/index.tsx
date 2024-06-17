@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import TopBar from "Components/topBar";
 import Container from "Components/container";
 import TextField from "Components/textField";
@@ -13,13 +14,25 @@ import {
   getKabupaten,
   getKecamatan,
   getKelurahan,
+  getNamaProvinsi,
+  getNamaKabupaten,
+  getNamaKecamatan,
+  getNamaKelurahan
 } from "Services/locationServices";
-import { updateProfile, getUsersFS } from "Services/userServices"
+import { paths } from "Consts/path"; // Menambahkan paths agar bisa berpindah halaman
+import { updateVillageProfile } from "Services/userServices";
 import useAuthLS from "Hooks/useAuthLS";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "../../../firebase/clientApp"
+import { db, storage } from "../../../firebase/clientApp"; // Import storage dari Firebase
+import { getDownloadURL, ref, uploadString } from "firebase/storage";
+import {
+  collection,
+  doc,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 
 const schema = z.object({
   nameVillage: z.string().min(1, { message: "*Nama desa wajib diisi" }),
@@ -30,21 +43,18 @@ const schema = z.object({
   district: z.string().min(1, { message: "*Pilih Kabupaten/Kota" }),
   subDistrict: z.string().min(1, { message: "*Pilih Kecamatan" }),
   village: z.string().min(1, { message: "*Pilih Kelurahan" }),
-  logo: z.string().min(1, { message: "*Silahkan masukkan logo" }),
-  header: z.string().min(1, { message: "*Silahkan masukkan background" }),
+  //logo: z.string().min(1, { message: "*Silahkan masukkan logo" }),
+  //header: z.string().min(1, { message: "*Silahkan masukkan background" }),
 });
 
 function AddVillage() {
+  const navigate = useNavigate();
   const form = useForm({ resolver: zodResolver(schema) });
   const { handleSubmit, reset } = form;
 
   const { auth } = useAuthLS();
-  const { mutateAsync } = useMutation(updateProfile);
-  const { data, isFetched } = useQuery<any>(
-    "profileVillage",
-    getUsersFS,
-  );
-  
+  const { mutateAsync } = useMutation(updateVillageProfile);
+
   // id
   const [selectedProvinsi, setSelectedProvinsi] = useState("");
   const [selectedKabupaten, setSelectedKabupaten] = useState("");
@@ -53,19 +63,48 @@ function AddVillage() {
   const { data: provinsi } = useQuery<any>("provinsi", getProvinsi);
   const { data: kabupaten } = useQuery<any>(
     ["kabupaten", selectedProvinsi],
-    () => getKabupaten(selectedProvinsi || data?.province),
-    { enabled: !!selectedProvinsi || isFetched }
+    () => getKabupaten(selectedProvinsi),
+    { enabled: !!selectedProvinsi }
   );
   const { data: kecamatan } = useQuery<any>(
     ["kecamatan", selectedKabupaten],
-    () => getKecamatan(selectedKabupaten || data?.district),
-    { enabled: !!selectedKabupaten || isFetched }
+    () => getKecamatan(selectedKabupaten),
+    { enabled: !!selectedKabupaten }
   );
   const { data: kelurahan } = useQuery<any>(
     ["kelurahan", selectedKecamatan],
-    () => getKelurahan(selectedKecamatan || data?.subDistrict),
-    { enabled: !!selectedKecamatan || isFetched }
+    () => getKelurahan(selectedKecamatan),
+    { enabled: !!selectedKecamatan }
   );
+
+  const [selectedLogo, setSelectedLogo] = useState<string>("");
+  const [selectedHeader, setSelectedHeader] = useState<string>("");
+  const selectLogoRef = useRef<HTMLInputElement>(null);
+  const selectHeaderRef = useRef<HTMLInputElement>(null);
+
+  const onSelectLogo = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const reader = new FileReader();
+    if (event.target.files?.[0]) {
+      reader.readAsDataURL(event.target.files[0]);
+    }
+    reader.onload = (readerEvent) => {
+      if (readerEvent.target?.result) {
+        setSelectedLogo(readerEvent.target.result as string);
+      }
+    };
+  };
+
+  const onSelectHeader = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const reader = new FileReader();
+    if (event.target.files?.[0]) {
+      reader.readAsDataURL(event.target.files[0]);
+    }
+    reader.onload = (readerEvent) => {
+      if (readerEvent.target?.result) {
+        setSelectedHeader(readerEvent.target.result as string);
+      }
+    };
+  };
 
   const forms = [
     {
@@ -73,8 +112,6 @@ function AddVillage() {
       type: "text",
       name: "province",
       placeholder: "Pilih provinsi",
-      defaultValue: data?.province,
-      isDisabled: !!data?.province,
       options:
         provinsi?.map((item: any) => ({
           id: item?.id,
@@ -87,8 +124,6 @@ function AddVillage() {
       type: "text",
       name: "district",
       placeholder: "Pilih kabupaten/kota",
-      defaultValue: data?.district,
-      isDisabled: !!data?.district,
       options:
         kabupaten?.map((item: any) => ({
           id: item?.id,
@@ -101,8 +136,6 @@ function AddVillage() {
       type: "text",
       name: "subDistrict",
       placeholder: "Pilih kecamatan",
-      defaultValue: data?.subDistrict,
-      isDisabled: !!data?.subDistrict,
       options:
         kecamatan?.map((item: any) => ({
           id: item?.id,
@@ -115,9 +148,6 @@ function AddVillage() {
       type: "text",
       name: "village",
       placeholder: "Pilih kelurahan",
-      value: data?.village,
-      defaultValue: data?.village,
-      isDisabled: data?.village,
       options:
         kelurahan?.map((item: any) => ({
           id: item?.id,
@@ -138,17 +168,14 @@ function AddVillage() {
     },
     {
       label: "Logo Desa",
-      type: "url",
+      type: "file",
       name: "logo",
-      placeholder: "https://",
     },
     {
       label: "Header Desa",
-      type: "url",
+      type: "file",
       name: "header",
-      placeholder: "https://",
     },
-
     {
       label: "Potensi Desa",
       type: "text",
@@ -163,66 +190,79 @@ function AddVillage() {
     },
   ];
 
-  const onProfileSave = async (formData: any) => {
+  const onProfileSave = async (data: any) => {
     try {
-      // Memeriksa apakah pengguna telah terotentikasi
-      if (!auth) {
-        throw new Error("Pengguna belum terotentikasi");
-      }
+      console.log("auth?.id:", auth?.id);
+      console.log("Data yang diterima:", data);
+      if (auth?.id) {
+        const docRef = doc(collection(db, "village"), auth.id);
 
-      const payload = {
-        id: auth.id, // Menggunakan ID pengguna dari auth
-        data: formData,
-      };
-      await mutateAsync(payload);
-      toast("Data berhasil disimpan", { type: "success" });
+        // Konversi ID lokasi menjadi nama lokasi
+        const provinceName = await getNamaProvinsi(data.province); // (Baris 168)
+        const districtName = await getNamaKabupaten(data.district); // (Baris 169)
+        const subDistrictName = await getNamaKecamatan(data.subDistrict); // (Baris 170)
+        const villageName = await getNamaKelurahan(data.village); // (Baris 171)
+
+        console.log("Saving profile data...");
+
+        // Simpan data profil desa ke firestore
+        await setDoc(docRef, {
+          nameVillage: data.nameVillage,
+          description: data.description,
+          benefit: data.benefit,
+          whatsApp: data.whatsApp,
+          province: provinceName, // Gunakan nama lokasi (Baris 178)
+          district: districtName, // Gunakan nama lokasi (Baris 179)
+          subDistrict: subDistrictName, // Gunakan nama lokasi (Baris 180)
+          village: villageName, // Gunakan nama lokasi (Baris 181)
+          user_id: auth.id,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        console.log("Profile data saved. Uploading logo...");
+
+        // Upload logo jika ada
+        if (selectedLogo) {
+          try {
+            const logoRef = ref(storage, `villages/${auth.id}/logo`);
+            await uploadString(logoRef, selectedLogo, "data_url");
+            const downloadURL = await getDownloadURL(logoRef);
+            await updateDoc(docRef, { logo: downloadURL }); // Simpan URL logo di Firestore (Baris 193)
+          } catch (error) {
+            console.error("Error uploading logo:", error);
+          }
+        }
+
+        console.log("Uploading header...");
+
+        // Upload header jika ada
+        if (selectedHeader) {
+          try {
+            const headerRef = ref(storage, `villages/${auth.id}/header`);
+            await uploadString(headerRef, selectedHeader, "data_url");
+            const downloadURL = await getDownloadURL(headerRef);
+            await updateDoc(docRef, { header: downloadURL }); // Simpan URL header di Firestore (Baris 205)
+          } catch (error) {
+            console.error("Error uploading header:", error);
+          }
+        }
+
+        toast("Data profil berhasil disimpan", { type: "success" });
+      } else {
+        toast("Tidak dapat menyimpan data profil. Harap masuk terlebih dahulu", { type: "error" });
+        navigate(paths.LOGIN_PAGE);
+      }
     } catch (error) {
       toast("Terjadi kesalahan jaringan", { type: "error" });
+      console.error("Error saving profile data:", error);
     }
   };
 
   useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        if (auth?.id) {
-          const userDocSnap = await getDoc(doc(db, "users", auth.id));
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-  
-            // Check if user has filled out the profile before
-            if (userData.province && userData.district && userData.subDistrict) {
-              const { province, district, subDistrict } = userData;
-  
-              // Assign values from user profile to corresponding variables
-              const idProvinsi = province;
-              const idKota = district;
-              const idKecamatan = subDistrict;
+    reset();
+  }, [reset]);
 
-              // Set selected values for province, district, and subDistrict
-              setSelectedProvinsi(idProvinsi);
-              setSelectedKabupaten(idKota);
-              setSelectedKecamatan(idKecamatan);
-  
-              // Fetch data for kabupaten, kecamatan, and kelurahan based on user's profile
-              getKabupaten(idProvinsi);
-              getKecamatan(idKota);
-              getKelurahan(idKecamatan);
-            }
-  
-            // Reset form with user data
-            reset(userData);
-          }
-        } else {
-          console.error("Auth ID is undefined. Cannot fetch profile data.");
-        }
-      } catch (error) {
-        console.error("Error fetching profile data:", error);
-      }
-    };
-  
-    fetchProfileData();
-  }, [auth?.id, reset]);  
-  
   return (
     <Container page px={16}>
       <TopBar title="Profil Desa" />
@@ -257,6 +297,19 @@ function AddVillage() {
                   />
                 </React.Fragment>
               );
+            if (type === "file") {
+              return (
+                <React.Fragment key={idx}>
+                  <Label mt={12}>{label} </Label>
+                  <input
+                    type="file"
+                    name={name}
+                    ref={name === "logo" ? selectLogoRef : selectHeaderRef}
+                    onChange={name === "logo" ? onSelectLogo : onSelectHeader}
+                  />
+                </React.Fragment>
+              );
+            }
 
             return (
               <React.Fragment key={idx}>
@@ -279,6 +332,7 @@ function AddVillage() {
       </form>
     </Container>
   );
+
 }
 
 export default AddVillage;
