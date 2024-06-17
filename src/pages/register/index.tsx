@@ -41,7 +41,14 @@ function Register() {
     try {
       await mutateAsync(data);
       reset();
-      navigate(paths.LOGIN_PAGE);
+      // Redirect based on role
+      if (data.role === "innovator") {
+        navigate(paths.INNOVATOR_PROFILE_PAGE);
+      } else if (data.role === "village") {
+        navigate(paths.VILLAGE_PROFILE_PAGE);
+      } else {
+        navigate(paths.LOGIN_PAGE); // Default fallback
+      }
     } catch (error) {
       console.log(error);
     }
