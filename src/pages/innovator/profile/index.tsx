@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import TopBar from "Components/topBar";
 import Container from "Components/container";
 import TextField from "Components/textField";
@@ -10,23 +10,50 @@ import { toast } from "react-toastify";
 import useAuthLS from "Hooks/useAuthLS";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { db } from "../../../firebase/clientApp"; // Import database Firestore
-import { doc, getDoc, setDoc } from "firebase/firestore"; // Import Firestore methods
-import { paths } from "Consts/path";// Menambahkan paths agar bisa berpindah halaman
+import { db, storage } from "../../../firebase/clientApp"; // Import database Firestore
+import {
+  setDoc,
+  getDoc,
+  collection,
+  doc,
+  serverTimestamp,
+  updateDoc,
+} from "firebase/firestore";
+import { paths } from "Consts/path"; // Menambahkan paths agar bisa berpindah halaman
+import { useController, UseControllerProps } from 'react-hook-form';
+import { getDownloadURL, ref, uploadString } from "firebase/storage";
+import { ControllerRenderProps } from 'react-hook-form';
 
+interface DropdownProps {
+  options: string[];
+  field: ControllerRenderProps<any, string>;
+  placeholder: string;
+}
 
 const schema = z.object({
   innovatorName: z.string().min(1, { message: "*Nama inovator wajib diisi" }),
-  targetUser: z.string().min(1, { message: "*Target pengguna wajib diisi" }),
-  product: z.string().min(1, { message: "*Isi nama produk" }),
+  category: z.string().min(1, { message: "*Pilih Kategori yang sesuai" }),
   description: z.string().min(1, { message: "*Deskripsi wajib diisi" }),
   modelBusiness: z.string().min(1, { message: "*Model bisnis wajib diisi" }),
-  logo: z.string().min(1, { message: "*Silahkan masukkan logo" }),
-  background: z.string().min(1, { message: "*Silahkan masukkan background" }),
   whatsApp: z.string().min(1, { message: "*Nomor whatsapp wajib diisi" }),
   website: z.string().min(1, { message: "*Website wajib diisi" }),
   instagram: z.string().min(1, { message: "*Instagram wajib diisi" }),
 });
+
+const Dropdown: React.FC<DropdownProps> = ({ options, field, placeholder }) => {
+  return (
+    <select {...field}>
+      <option value="" disabled>
+        {placeholder}
+      </option>
+      {options.map((option, index) => (
+        <option key={index} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  );
+};
 
 const forms = [
   {
@@ -35,16 +62,16 @@ const forms = [
     name: "innovatorName",
   },
   {
-    label: "Target Pengguna",
-    type: "text",
-    name: "targetUser",
-    placeholder: "contoh: nelayan",
-  },
-  {
-    label: "Produk",
-    type: "text",
-    name: "product",
-    placeholder: "Masukkan nama produk",
+    label: "Kategori Inovator",
+    type: "dropdown",
+    name: "category",
+    placeholder: "Pilih kategori",
+    options: [
+      "Pemerintah Pusat",
+      "Pemerintah Daerah",
+      "Swasta",
+      "Lainnya"
+    ],
   },
   {
     label: "Model Bisnis Digital",
@@ -60,15 +87,13 @@ const forms = [
   },
   {
     label: "Logo Inovator",
-    type: "url",
+    type: "file",
     name: "logo",
-    placeholder: "https://",
   },
   {
     label: "Header Inovator",
-    type: "url",
+    type: "file",
     name: "background",
-    placeholder: "https://",
   },
   {
     label: "Nomor WhatsApp",
@@ -99,79 +124,163 @@ function Profile() {
 
   const { auth } = useAuthLS();
 
+  const [selectedLogo, setSelectedLogo] = useState<string>("");
+  const [selectedHeader, setSelectedHeader] = useState<string>("");
+  const selectLogoRef = useRef<HTMLInputElement>(null);
+  const selectHeaderRef = useRef<HTMLInputElement>(null);
+
+  const onSelectLogo = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const reader = new FileReader();
+    if (event.target.files?.[0]) {
+      reader.readAsDataURL(event.target.files[0]);
+    }
+    reader.onload = (readerEvent) => {
+      if (readerEvent.target?.result) {
+        setSelectedLogo(readerEvent.target.result as string);
+      }
+    };
+  };
+
+  const onSelectHeader = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const reader = new FileReader();
+    if (event.target.files?.[0]) {
+      reader.readAsDataURL(event.target.files[0]);
+    }
+    reader.onload = (readerEvent) => {
+      if (readerEvent.target?.result) {
+        setSelectedHeader(readerEvent.target.result as string);
+      }
+    };
+  };
+
   const onProfileSave = async (data: any) => {
     try {
       if (auth?.id) {
-        const userDocRef = doc(db, "users", auth.id); // Reference to user document in Firestore
-        const userDocSnap = await getDoc(userDocRef); // Get user document from Firestore
-  
-        if (userDocSnap.exists()) {
-          const existingData = userDocSnap.data(); // Existing user data from document snapshot
-  
-          // Merge existing data with new data
-          const newData = {
-            ...existingData,
-            ...data
-          };
-  
-          await setDoc(userDocRef, newData); // Set user document data in Firestore
-          toast("Data profil berhasil disimpan", { type: "success" });
-        } else {
-          toast("User document doesn't exist", { type: "error" });
+        const docRef = doc(collection(db, "innovators"), auth.id);
+
+        console.log("Saving profile data...");
+
+        await setDoc(docRef, {
+          innovatorName: data.innovatorName,
+          category: data.category,
+          description: data.description,
+          modelBusiness: data.modelBusiness,
+          whatsApp: data.whatsApp,
+          website: data.website,
+          instagram: data.instagram,
+          user_id: auth.id,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        console.log("Profile data saved. Uploading logo...");
+
+        if (selectedLogo) {
+          try {
+            const logoRef = ref(storage, `innovators/${auth.id}/logo`);
+            await uploadString(logoRef, selectedLogo, "data_url");
+            const downloadURL = await getDownloadURL(logoRef);
+            await updateDoc(docRef, { logo: downloadURL });
+            console.log("Logo uploaded and URL saved:", downloadURL);
+          } catch (error) {
+            console.error("Error uploading logo:", error);
+          }
         }
+
+        console.log("Uploading header...");
+
+        if (selectedHeader) {
+          try {
+            const headerRef = ref(storage, `innovators/${auth.id}/header`);
+            await uploadString(headerRef, selectedHeader, "data_url");
+            const downloadURL = await getDownloadURL(headerRef);
+            await updateDoc(docRef, { background: downloadURL });
+            console.log("Header uploaded and URL saved:", downloadURL);
+          } catch (error) {
+            console.error("Error uploading header:", error);
+          }
+        }
+
+        toast("Data profil berhasil disimpan", { type: "success" });
       } else {
-        // Handle case when auth.id is undefined
         toast("Tidak dapat menyimpan data profil. Harap masuk terlebih dahulu", { type: "error" });
-        navigate(paths.LOGIN_PAGE); // Redirect to login page
+        navigate(paths.LOGIN_PAGE);
       }
     } catch (error) {
       toast("Terjadi kesalahan jaringan", { type: "error" });
+      console.error("Error saving profile data:", error);
     }
   };
-  
-  
+
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (auth?.id) {
-          const userDocSnap = await getDoc(doc(db, "users", auth.id)); // Get user document from Firestore
+          const userDocSnap = await getDoc(doc(db, "innovators", auth.id));
           if (userDocSnap.exists()) {
-            const userData = userDocSnap.data(); // Extract user data from document snapshot
-            form.reset(userData); // Set form values to user data
+            const userData = userDocSnap.data();
+            form.reset(userData);
           }
         } else {
-          // Handle case when auth.id is undefined
           console.error("Cannot fetch user data. User ID is undefined.");
         }
       } catch (error) {
         console.error("Error getting user document:", error);
       }
     };
-    
-    fetchData();
-  }, [auth?.id]); // Fetch user data when auth ID changes
 
+    fetchData();
+  }, [auth?.id]);
 
   return (
     <Container page>
       <TopBar title="Profil Inovator" onBack={() => navigate(-1)} />
       <FormContainer>
         <form onSubmit={handleSubmit(onProfileSave)}>
-          {forms?.map(({ label, type, name, placeholder }, idx) => (
-            <React.Fragment key={idx}>
-              <Label mt={12}>{label} </Label>
-              <TextField
-                mt={4}
-                placeholder={placeholder || label}
-                type={type}
-                name={name}
-                form={form}
-              />
-            </React.Fragment>
-          ))}
+          {forms?.map(({ label, type, name, placeholder, options }, idx) => {
+            if (type === "dropdown") {
+              const { field } = useController({ name, control: form.control });
+              return (
+                <React.Fragment key={idx}>
+                  <Label mt={12}>{label} </Label>
+                  <Dropdown
+                    options={options || []}
+                    field={field}
+                    placeholder={placeholder || ''}
+                  />
+                </React.Fragment>
+              );
+            }
 
-          <Button size="m" fullWidth mt={12} type="submit">
+            if (type === "file") {
+              return (
+                <React.Fragment key={idx}>
+                  <Label mt={12}>{label} </Label>
+                  <input
+                    type="file"
+                    name={name}
+                    ref={name === "logo" ? selectLogoRef : selectHeaderRef}
+                    onChange={name === "logo" ? onSelectLogo : onSelectHeader}
+                  />
+                </React.Fragment>
+              );
+            }
+
+            return (
+              <React.Fragment key={idx}>
+                <Label mt={12}>{label} </Label>
+                <TextField
+                  mt={4}
+                  placeholder={placeholder || label}
+                  type={type}
+                  name={name}
+                  form={form}
+                />
+              </React.Fragment>
+            );
+          })}
+          <Button mt={12} type="submit">
             Simpan
           </Button>
         </form>
