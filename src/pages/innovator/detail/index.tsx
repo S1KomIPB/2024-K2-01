@@ -1,10 +1,11 @@
 import React from "react";
 import TopBar from "Components/topBar";
 import Button from "Components/button";
-import { useNavigate, useParams } from "react-router-dom";
+import { generatePath, useNavigate, useParams } from "react-router-dom";
 import Container from "Components/container";
 import { useQuery } from "react-query";
 import { getUserById } from "Services/userServices"; // Gunakan getUserById dari userServices
+import { getInnovationByInnovators } from "Services/innovationServices"; // Impor fungsi baru
 import { paths } from "Consts/path";
 import {
   ContentContainer,
@@ -16,19 +17,20 @@ import {
   Description,
   GridContainer,
 } from "./_detailStyle";
+import CardInnovation from "Components/card/innovation"; // Impor komponen CardInnovation
 
 function Detail() {
   const navigate = useNavigate();
   const { id } = useParams();
   if (!id) {
     // Handle the case where id is undefined
-    return null;
-    console.log("User not found!");
+    return <p>User not found!</p>;
   }
-  const { data, isLoading } = useQuery<any>(["innovatorById", id], () => getUserById(id)); // Perbarui penggunaan useQuery dengan id sebagai dependensi
-  const { background, logo, innovatorName } = data || {};
-  const { product, description, modelBusiness, targetUser, instagram } =
-    data || {};
+
+  const { data: userData, isLoading: isLoadingUser } = useQuery(["innovatorById", id], () => getUserById(id)); // Perbarui penggunaan useQuery dengan id sebagai dependensi
+  const { data: innovationsData, isLoading: isLoadingInnovations } = useQuery(["innovationsByInnovator", id], () => getInnovationByInnovators(id));
+
+  const { background, logo, innovatorName, category, description, modelBusiness, targetUser, instagram } = userData || {};
 
   const grid = [
     {
@@ -36,8 +38,8 @@ function Detail() {
       value: targetUser,
     },
     {
-      label: "Produk",
-      value: product,
+      label: "Kategori Inovator",
+      value: category,
     },
     {
       label: "Model bisnis digital",
@@ -49,7 +51,7 @@ function Detail() {
     window.open(instagram, "_blank");
   };
 
-  if (isLoading) return <p>Sedang memuat data...</p>;
+  if (isLoadingUser || isLoadingInnovations) return <p>Sedang memuat data...</p>;
 
   return (
     <Container page>
@@ -76,6 +78,20 @@ function Detail() {
             ))}
           </GridContainer>
           <Description>{description}</Description>
+          <Text>Inovasi yang Dihasilkan</Text>
+          <GridContainer>
+            {innovationsData?.map((item: any, idx: number) => (
+              <CardInnovation
+                key={idx}
+                {...item}
+                onClick={() =>
+                  navigate(
+                    generatePath(paths.DETAIL_INNOVATION_PAGE, { id: item?.idUnik })
+                  )
+                }
+              />
+            ))}
+          </GridContainer>
         </div>
         <Button size="m" fullWidth mt={12} type="submit" onClick={onClickHere}>
           Kontak Inovator
