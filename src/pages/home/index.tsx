@@ -81,7 +81,7 @@ function Home() {
 
   return (
     <Container page>
-      <TopBar />
+      <TopBar title='Innovillage' />
       <Hero />
       <Menu />
       <Readiness />
