@@ -356,7 +356,6 @@ const AddVillage: React.FC = () => {
                 <option
                   key={item.id}
                   value={item.id}
-                  style={{ color: "black" }}
                 >
                   {item.name}
                 </option>
